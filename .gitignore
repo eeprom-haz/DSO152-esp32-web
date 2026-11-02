@@ -1,0 +1,8 @@
+.pio/
+.vscode/
+*.before_deepseek
+deepseek_spec.txt
+run_deepseek.ps1
+Screen Shots/
+*.bin
+!tools/boot_stub.bin__pycache__/
