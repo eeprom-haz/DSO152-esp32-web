@@ -2,7 +2,7 @@
 
 Web DSO-152: wifi viewer for the FNIRSI DSO152 pocket scope.
 
-I received this FNIRSI DSO152 as a gift. Its rarely used , i dont like the small screen and I have better scopes. So this was vibe coded out of bordem. The original firmware still used, but it uses ESP32 reads the scopes memory over the SWD debug pads and puts it on a web page on my wifi. The esp32 is powered from the voltage pad ( power driver) so far I have not had issues. I would not recommend doing this. Do this at your own risk.
+I received this FNIRSI DSO152 as a gift few years back.  Its rarely used , i dont like the small screen and I have better scopes. So this was vibe coded out of bordem. The original firmware still used, but it uses ESP32 reads the scopes memory over the SWD debug pads and puts it on a web page on my wifi. The esp32 is powered from the voltage pad ( scopes power driver) so far I have not had issues. I would not recommend doing this. Do this at your own risk.
 
 ![desktop](screenshots/desktop.png)
 
@@ -19,7 +19,7 @@ I received this FNIRSI DSO152 as a gift. Its rarely used , i dont like the small
 - remote V/div, time/div, trigger level, trigger mode and RUN/STOP
 - time cursors (t1, t2, Δt, V(t1), V(t2)) and volt cursors (V1, V2, ΔV)
 - zoom and pan: wheel for time, shift+wheel for volts, pinch on a phone, drag to pan, double tap to reset
-- probes: 100/10/1 mV/A current clamps, a 0-100 psi sender, or make your own with a unit, mV per unit, 0 at V and invert
+- probes: 100/10/1 mV/A current clamps, a 0-100 psi sender, or make your own with a unit, mV per unit, 0 at V and invert. ( not fully tested)
 - recording and playback in the browser, CSV export, PNG screenshot
 - background logging to FTP, sampled every 10/30/60 s or 5 min, uploaded every 15 min to 6 h
 - MQTT publishing as JSON every 1/2/5/10 s, plus a cmd topic for RUN/STOP
@@ -99,13 +99,18 @@ To change networks later, erase the ESP32's flash (`pio run -e esp32c3 -t erase`
 - The trace only changes when the scope finishes a capture. While it waits for a trigger or sits stopped, you see the last capture, like the scope screen.
 - Tools has 0 V up/down (moves the zero line on the page), the probe picker, time and volt cursors, Freeze view, fps, PNG and CSV.
 - Drag a cursor to move it. Time cursors show t1, t2, Δt, V(t1) and V(t2). Volt cursors show V1, V2 and ΔV.
-- Zoom with the wheel (time) or shift+wheel (volts). Pinch on a phone, drag to pan, double tap to reset. Zoom stops at 16x.
-- Record keeps captures in browser memory, up to 9000. Play, scrub or go back to Live. Export writes one row per capture with all 300 points. PNG saves the screen with the readings.
+- Zoom with scroll wheel . Or pinch and  drag to pan, double tap to reset. Zoom stops at 16x.
+- Record keeps captures in browser memory.  Play, scrub or go back to Live. Export writes one row per capture with all 300 points. PNG saves the screen with the readings.
 
 ## Logging and MQTT
 
-All of it is in the Settings popup (the gear button). Tick "Log to FTP", fill in host, port, user, password and folder, choose the sample interval (10/30/60 s or 5 min) and the upload interval (15 min to 6 h, default 1 h).
+All of it is in the Settings popup. Tick "Log to FTP", fill in host, port, user, password and folder, choose the sample interval (10/30/60 s or 5 min) and the FTP upload interval  15 to 60 min. 
 
 Samples go into esp memory 1st , then get saved to a daily file like `dso152_2026-11-02.csv` on the FTP server. 
 
+## Testing 
+
+What I have yet to test is battery life with the ESP.  But I plan on leaving it with a charger and doing some automotive battery drain capturess. 
+
+Well it's a slow Oscilliscope and the UI can only do 10- 25 FPS. 
 
