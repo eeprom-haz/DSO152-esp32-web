@@ -8,13 +8,13 @@
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <WiFi.h>
-#include <WiFiManager.h>
 
 #include "frame.h"
 #include "logger.h"
 #include "qr_png.h"
 #include "swd.h"
 #include "web_page.h"
+#include "wifi_net.h"
 
 // --- wiring (overridden per board in platformio.ini) ------------------------
 #ifndef PIN_SWCLK
@@ -64,6 +64,7 @@ uint32_t statFrames = 0, statReadUs = 0, statT0 = 0;
 // Full speed (radio awake, fast CPU) only while someone is watching; modem
 // sleep and a slow CPU the rest of the time.
 void setRadioAwake(bool awake) {
+  if (wifi_net::apMode()) return;   // modem sleep is not allowed in AP mode
   if (awake == radioAwake) return;
   radioAwake = awake;
   WiFi.setSleep(!awake);
@@ -185,19 +186,11 @@ void setup() {
   swd::release();
   scopeOk = false;              // reconnect when the first browser opens
 
-  // First boot (or network missing): open "DSO152-Setup" for 3 minutes so a
-  // phone can choose the Wi-Fi network; credentials are stored in flash.
-  WiFiManager wm;
-  wm.setConfigPortalTimeout(180);
-  wm.setHostname("dso152");
-  if (!wm.autoConnect("DSO152-Setup")) {
-    Serial.println("Wi-Fi setup timed out, restarting");
-    ESP.restart();
-  }
-  WiFi.setSleep(true);          // modem sleep between beacons (normal TX power:
-                                // lowering it made the link collapse under load)
-  Serial.printf("Wi-Fi: %s  ->  http://%s/  or  http://dso152.local/\n",
-                WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+  // Known networks (or the onboard hotspot) are handled by wifi_net.
+  wifi_net::begin(http);
+  if (!wifi_net::apMode())
+    Serial.printf("Wi-Fi: %s -> http://%s/ or http://dso152.local/\n",
+                  WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
 
   MDNS.begin("dso152");
   MDNS.addService("http", "tcp", 80);
@@ -217,6 +210,7 @@ void loop() {
   http.handleClient();
   ws.loop();
   logger::loop();
+  wifi_net::loop();
 
   bool watching = ws.connectedClients() > 0;
   bool background = !watching && logger::wantsScope();

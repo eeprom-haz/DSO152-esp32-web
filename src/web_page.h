@@ -43,11 +43,11 @@ button:active{filter:brightness(1.3)}
 #setcard,#probecard{text-align:left;max-width:420px}
 #aboutbox h2,#setbox h2,#probebox h2{font-size:15px;margin:6px 8px}
 #aboutbox p,#setbox p,#probebox p{margin:6px 8px;color:var(--muted)}
-#setform,#probeform{display:grid;grid-template-columns:auto 1fr;gap:5px 8px;align-items:center;font-size:12px;margin:4px 8px}
-#setform label,#probeform label{color:var(--muted);text-align:right}
-#setform input,#setform select,#probeform input{width:100%;min-width:0;background:var(--plot);color:var(--text);border:1px solid #334155;border-radius:4px;padding:4px 6px;font:12px Consolas,monospace}
-#setform input[type=checkbox],#probeform input[type=checkbox]{width:auto;justify-self:start}
-#setform .btns,#probeform .btns{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+#setform,#wifiform,#probeform{display:grid;grid-template-columns:auto 1fr;gap:5px 8px;align-items:center;font-size:12px;margin:4px 8px}
+#setform label,#wifiform label,#probeform label{color:var(--muted);text-align:right}
+#setform input,#setform select,#wifiform input,#wifiform select,#probeform input{width:100%;min-width:0;background:var(--plot);color:var(--text);border:1px solid #334155;border-radius:4px;padding:4px 6px;font:12px Consolas,monospace}
+#setform input[type=checkbox],#wifiform input[type=checkbox],#probeform input[type=checkbox]{width:auto;justify-self:start}
+#setform .btns,#wifiform .btns,#probeform .btns{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 #setstatus{font:11px Consolas,monospace;color:#cbd5e1;margin:6px 8px;min-height:2.4em;white-space:pre-wrap}
 #qr{display:block;margin:6px auto;background:#fff;border-radius:8px;padding:6px}
 #bmc{display:inline-block;margin:6px 8px;background:#facc15;color:#12151c;border-radius:5px;padding:9px 12px;font:inherit;text-decoration:none;cursor:pointer}
@@ -151,6 +151,22 @@ button,select{padding:4px 6px}
 <div id="setbox">
 <div id="setcard">
 <h2>Settings</h2>
+<form id="wifiform">
+<div id="wifinow" style="grid-column:1/-1">Loading...</div>
+<div style="grid-column:1/-1;color:var(--muted)">Saved networks</div>
+<div id="wifilist" style="grid-column:1/-1"></div>
+<label for="w_ssid">Network</label>
+<div style="display:flex;gap:5px;min-width:0">
+<select id="w_ssid"><option value="">Other...</option></select><button type="button" class="g" id="w_scan">Scan</button>
+</div>
+<input id="w_other" type="text" autocomplete="off" autocapitalize="none" placeholder="network name (or Scan)" style="grid-column:1/-1">
+<label for="w_pass">Password</label><input id="w_pass" type="password" autocomplete="new-password">
+<div class="btns">
+<button type="submit" class="g">Add network</button>
+<button type="button" class="g" id="w_connect" hidden>Connect now</button>
+</div>
+<div style="grid-column:1/-1;color:var(--muted);font-size:11px;line-height:1.3">Joins the strongest saved network in range. If none is found it makes its own hotspot DSO152 (password dso152scope), page at 192.168.4.1.</div>
+</form>
 <form id="setform">
 <label for="s_log_on">Log to FTP</label><input type="checkbox" id="s_log_on">
 <label for="s_log_int">Log every</label><select id="s_log_int"><option value="10">10 s</option><option value="30" selected>30 s</option><option value="60">60 s</option><option value="300">5 min</option></select>
@@ -422,7 +438,7 @@ document.addEventListener("pointerdown",e=>{
 $("about").onclick=()=>{ if(!$("qr").src)$("qr").src="/qr.png"; $("aboutbox").classList.toggle("open");$("about").classList.toggle("on");};
 $("aboutclose").onclick=()=>{$("aboutbox").classList.remove("open");$("about").classList.remove("on");};
 $("setb").onclick=()=>{ $("setbox").classList.toggle("open");$("setb").classList.toggle("on");
-  if($("setbox").classList.contains("open")){loadSettings();startStatus();}else stopStatus();};
+  if($("setbox").classList.contains("open")){loadSettings();loadWifi();startStatus();}else stopStatus();};
 $("setclose").onclick=()=>{$("setbox").classList.remove("open");$("setb").classList.remove("on");stopStatus();};
 $("aboutbox").onclick=e=>{if(e.target.id=="aboutbox")$("aboutclose").onclick();};
 $("setbox").onclick=e=>{if(e.target.id=="setbox")$("setclose").onclick();};
@@ -475,6 +491,77 @@ async function loadSettings(){
     $("s_mqtt_topic").value=s.mqtt_topic||"dso152"; setSel("s_mqtt_int",s.mqtt_int);
   }catch(e){$("setstatus").textContent="error: "+e.message;}
 }
+async function loadWifi(){
+  try{
+    const r=await fetch("/wifi"); if(!r.ok)throw new Error("HTTP "+r.status);
+    const w=await r.json(), ap=w.mode=="ap";
+    $("wifinow").textContent=ap?`Hotspot ${w.ssid||"DSO152"}, ${w.ip||"192.168.4.1"} (no known network found)`:`On ${w.ssid}, ${w.ip}, ${w.rssi} dBm`;
+    $("w_connect").hidden=!ap;
+    const list=$("wifilist"); list.textContent="";
+    (w.saved||[]).forEach(ssid=>{
+      const row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:6px";
+      const name=document.createElement("span"); name.textContent=ssid;
+      const del=document.createElement("button"); del.type="button"; del.className="g"; del.textContent="x";
+      del.style.cssText="padding:1px 8px";
+      del.onclick=async()=>{
+        if(!confirm(`Remove ${ssid}?`))return;
+        try{
+          const b=new URLSearchParams(); b.set("ssid",ssid);
+          const rr=await fetch("/wifi/del",{method:"POST",body:b});
+          const t=(await rr.text()).trim();
+          if(rr.ok&&t=="ok")loadWifi(); else $("setstatus").textContent="error: "+t;
+        }catch(e){$("setstatus").textContent="error: "+e.message;}
+      };
+      row.appendChild(name); row.appendChild(del); list.appendChild(row);
+    });
+  }catch(e){$("setstatus").textContent="error: "+e.message;}
+}
+function wifiOther(){
+  const other=!$("w_ssid").value;
+  $("w_other").hidden=!other;
+  if(!other)$("w_other").value="";
+}
+async function scanWifi(){
+  $("setstatus").textContent="scanning...";
+  for(let i=0;i<15;i++){
+    try{
+      const r=await fetch("/wifi/scan"); if(!r.ok)throw new Error("HTTP "+r.status);
+      const s=await r.json();
+      if(s.busy){await new Promise(done=>setTimeout(done,700));continue;}
+      $("w_ssid").innerHTML="";
+      (s.nets||[]).forEach(n=>{
+        const o=document.createElement("option");
+        o.value=n.ssid; o.textContent=`${n.ssid} (${n.rssi} dBm)${n.open?" open":""}`;
+        $("w_ssid").appendChild(o);
+      });
+      const o=document.createElement("option"); o.value=""; o.textContent="Other..."; $("w_ssid").appendChild(o);
+      $("w_ssid").selectedIndex=0; wifiOther();
+      $("setstatus").textContent="";
+      return;
+    }catch(e){$("setstatus").textContent="error: "+e.message;return;}
+  }
+  $("setstatus").textContent="scan timed out";
+}
+async function addWifi(){
+  const b=new URLSearchParams();
+  b.set("ssid",$("w_ssid").value||$("w_other").value);
+  b.set("pass",$("w_pass").value);
+  try{
+    const r=await fetch("/wifi/add",{method:"POST",body:b});
+    const t=(await r.text()).trim();
+    if(r.ok&&t=="ok"){$("setstatus").textContent="network saved";$("w_pass").value="";loadWifi();}
+    else $("setstatus").textContent="error: "+t;
+  }catch(e){$("setstatus").textContent="error: "+e.message;}
+}
+async function connectWifi(){
+  try{
+    const r=await fetch("/wifi/connect",{method:"POST"});
+    const t=(await r.text()).trim();
+    if(r.ok&&t=="trying")$("setstatus").textContent="trying saved networks, the hotspot will drop if one works. Reconnect your phone to that network and open http://dso152.local/";
+    else $("setstatus").textContent="error: "+t;
+  }catch(e){$("setstatus").textContent="error: "+e.message;}
+}
 async function saveSettings(){
   const b=new URLSearchParams();
   if($("s_log_on").checked)b.set("log_on","1");
@@ -510,6 +597,10 @@ async function pollStatus(){
 function startStatus(){pollStatus();stopStatus();statusTimer=setInterval(pollStatus,5000);}
 function stopStatus(){if(statusTimer){clearInterval(statusTimer);statusTimer=null;}}
 $("setform").onsubmit=e=>{e.preventDefault();saveSettings();};
+$("wifiform").onsubmit=e=>{e.preventDefault();addWifi();};
+$("w_scan").onclick=scanWifi;
+$("w_ssid").onchange=wifiOther;
+$("w_connect").onclick=connectWifi;
 $("setupload").onclick=async()=>{try{const r=await fetch("/ftp/upload",{method:"POST"});$("setstatus").textContent=(await r.text())||"upload done";}catch(e){$("setstatus").textContent="error: "+e.message;}};
 $("setdownload").onclick=async()=>{try{const r=await fetch("/log.csv");if(!r.ok)throw new Error("HTTP "+r.status);download("dso152_log.csv",await r.blob());}catch(e){$("setstatus").textContent="error: "+e.message;}};
 $("setclear").onclick=async()=>{try{await fetch("/log/clear",{method:"POST"});pollStatus();}catch(e){$("setstatus").textContent="error: "+e.message;}};
