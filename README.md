@@ -7,12 +7,10 @@ I received this FNIRSI DSO152 as a gift. Its rarely used , i dont like the small
 ![desktop](screenshots/desktop.png)
 
 | phone | cursors |
-
 |---|---|
 | ![phone](screenshots/phone.png) | ![cursors](screenshots/cursors.png) |
-| Esp32 | Case |
- ![ Esp32 ](screenshots/esp32.jpg)
-  ![ Case ](screenshots/case.jpg)
+| **Esp32** | **Case** |
+| ![Esp32](screenshots/esp32.jpg) | ![Case](screenshots/case.jpg) |
 
 ## What it does
 
