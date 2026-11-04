@@ -2,7 +2,7 @@
 
 Web DSO-152: wifi viewer for the FNIRSI DSO152 pocket scope.
 
-I received this FNIRSI DSO152 as a gift. Its rarely used , i dont like the small screen and I have better scopes. So this was vibe coded out of bordem. The original firmware still used, but it uses ESP32 reads the scopes memory over the SWD debug pads and puts it on a web page on my wifi. The esp32 is powered from the voltage pad ( power driver) so far I have not had issues. I would not recommend doing this. Do this at your own risk.
+I received this FNIRSI DSO152 as a gift. Its rarely used , i don't  like the small screen and I have better scopes. So this was vibe coded out of boredom. The original firmware still used, but it uses ESP32 reads the scopes memory over the SWD debug pads and puts it on a web page on my WIFI. The esp32 is powered from the voltage pad ( power driver) so far I have not had issues. The Esp fits under the battery, I did add some wire to antenna  to increase WIFI range.
 
 ![desktop](screenshots/desktop.png)
 
