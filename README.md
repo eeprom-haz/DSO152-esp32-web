@@ -2,15 +2,17 @@
 
 Web DSO-152: wifi viewer for the FNIRSI DSO152 pocket scope.
 
-I received this FNIRSI DSO152 as a gift few years back.  Its rarely used , i dont like the small screen and I have better scopes. So this was vibe coded out of bordem. The original firmware still used, but it uses ESP32 reads the scopes memory over the SWD debug pads and puts it on a web page on my wifi. The esp32 is powered from the voltage pad ( scopes power driver) so far I have not had issues. I would not recommend doing this. Do this at your own risk.
+I received this FNIRSI DSO152 as a gift. Its rarely used , i dont like the small screen and I have better scopes. So this was vibe coded out of bordem. The original firmware still used, but it uses ESP32 reads the scopes memory over the SWD debug pads and puts it on a web page on my wifi. The esp32 is powered from the voltage pad ( power driver) so far I have not had issues. I would not recommend doing this. Do this at your own risk.
 
 ![desktop](screenshots/desktop.png)
 
 | phone | cursors |
+
 |---|---|
 | ![phone](screenshots/phone.png) | ![cursors](screenshots/cursors.png) |
-
-![settings with a 100mV/A clamp](screenshots/settings-amps.png)
+| Esp32 | Case |
+ ![ Esp32 ](screenshots/esp32.jpg)
+  ![ Case ](screenshots/case.jpg)
 
 ## What it does
 
@@ -19,7 +21,7 @@ I received this FNIRSI DSO152 as a gift few years back.  Its rarely used , i don
 - remote V/div, time/div, trigger level, trigger mode and RUN/STOP
 - time cursors (t1, t2, Δt, V(t1), V(t2)) and volt cursors (V1, V2, ΔV)
 - zoom and pan: wheel for time, shift+wheel for volts, pinch on a phone, drag to pan, double tap to reset
-- probes: 100/10/1 mV/A current clamps, a 0-100 psi sender, or make your own with a unit, mV per unit, 0 at V and invert. ( not fully tested)
+- probes: 100/10/1 mV/A current clamps, a 0-100 psi sender, or make your own with a unit, mV per unit, 0 at V and invert
 - recording and playback in the browser, CSV export, PNG screenshot
 - background logging to FTP, sampled every 10/30/60 s or 5 min, uploaded every 15 min to 6 h
 - MQTT publishing as JSON every 1/2/5/10 s, plus a cmd topic for RUN/STOP
@@ -45,7 +47,7 @@ Things I ran into:
 
 | ESP32 board | SWCLK | SWDIO |
 |---|---|---|
-| ESP32-C3 (SuperMini etc.), `env:esp32c3` | GPIO4 | GPIO5 |
+| ESP32-C3 (SuperMini etc.), `env:esp32c3` | GPIO3 | GPIO4 |
 | ESP-WROOM-32 DevKit, `env:esp32dev` | GPIO18 | GPIO19 |
 
 Wiring to the scope's SWD pads:
@@ -71,9 +73,31 @@ there's also a laptop version in `tools/swd_viewer.py` that does the same thing 
 
 Current is about 20-40 mA connected to Wi-Fi with no page open, more while streaming.
 
+## Flash it without installing anything
+
+ready made files are in the `firmware/` folder, one per board. the pins are baked in, so wire it like this:
+
+| board | file | scope SWCLK to | scope SWDIO to |
+|---|---|---|---|
+| ESP-WROOM-32 DevKit | `firmware/DSO152-esp32-web_esp32dev.bin` | GPIO18 | GPIO19 |
+| ESP32-C3 SuperMini | `firmware/DSO152-esp32-web_esp32c3.bin` | GPIO3 | GPIO4 |
+
+on a SuperMini that's 4 pins in a row on one side: GND, 3V3, GPIO4, GPIO3. if the page says scope not connected, try swapping the two data wires.
+
+plus GND to GND and the scope 3.3V to the esp 3V3 (see Hardware above). want other pins? then you have to build it yourself, change `PIN_SWCLK` / `PIN_SWDIO` in platformio.ini.
+
+1. open https://espressif.github.io/esptool-js/ in Chrome or Edge (firefox wont work)
+2. plug the esp in, hit Connect and pick its COM port
+3. Flash Address `0x0`, choose the .bin for your board, Program
+4. press reset on the esp when its done
+
+C3 not showing up? hold BOOT while you plug it in. DevKits with a CP210x chip need the Silicon Labs driver on windows.
+
+these files have everything in them (bootloader, partitions, app) and wipe saved wifi and settings, so you set wifi up again with the hotspot (below).
+
 ## Build and flash the ESP32
 
-You need PlatformIO (VS Code extension or CLI).
+Or build it yourself. You need PlatformIO (VS Code extension or CLI).
 
 ```bash
 pio run -e esp32c3 -t upload
@@ -85,12 +109,15 @@ Serial log is 115200: `pio device monitor`. It prints the SWD connection result,
 
 ## First Wi-Fi setup
 
-1. Power the ESP32. If it doesn't know a network it opens a Wi-Fi network called **DSO152-Setup** for 3 minutes.
-2. Join it from a phone; a setup page opens (or go to `192.168.4.1`).
-3. Pick your Wi-Fi, enter the password, save. It's stored on the ESP32.
-4. Open **http://dso152.local** (or the IP from the serial log) from any PC or phone on that network.
+1. Power the ESP32. If it can't find a network it knows, it makes its own hotspot called **DSO152**, password `dso152scope`.
+2. Join it from a phone, the page should pop up (or go to `192.168.4.1`). The scope works right there on the hotspot, handy in the car or out in the field.
+3. Open Settings (gear), Wi-Fi is at the top. Scan, pick your network, type the password, Add network.
+4. Hit Connect now (or just leave the hotspot, it tries on its own every minute when no one is on it).
+5. Join that same network with your phone/pc and open **http://dso152.local** (or the IP from your router or the serial log).
 
-To change networks later, erase the ESP32's flash (`pio run -e esp32c3 -t erase`) and reflash.
+It remembers up to 6 networks and joins the strongest one it finds. So add your home, shop, phone hotspot etc. and take it anywhere, no reflashing. Delete old ones with the x in the list. If the network drops it tries the others, then falls back to its own hotspot.
+
+wifi passwords are stored plain on the esp32, same as the ftp one.
 
 ## Using it
 
@@ -99,18 +126,13 @@ To change networks later, erase the ESP32's flash (`pio run -e esp32c3 -t erase`
 - The trace only changes when the scope finishes a capture. While it waits for a trigger or sits stopped, you see the last capture, like the scope screen.
 - Tools has 0 V up/down (moves the zero line on the page), the probe picker, time and volt cursors, Freeze view, fps, PNG and CSV.
 - Drag a cursor to move it. Time cursors show t1, t2, Δt, V(t1) and V(t2). Volt cursors show V1, V2 and ΔV.
-- Zoom with scroll wheel . Or pinch and  drag to pan, double tap to reset. Zoom stops at 16x.
-- Record keeps captures in browser memory.  Play, scrub or go back to Live. Export writes one row per capture with all 300 points. PNG saves the screen with the readings.
+- Zoom with the wheel (time) or shift+wheel (volts). Pinch on a phone, drag to pan, double tap to reset. Zoom stops at 16x.
+- Record keeps captures in browser memory, up to 9000. Play, scrub or go back to Live. Export writes one row per capture with all 300 points. PNG saves the screen with the readings.
 
 ## Logging and MQTT
 
-All of it is in the Settings popup. Tick "Log to FTP", fill in host, port, user, password and folder, choose the sample interval (10/30/60 s or 5 min) and the FTP upload interval  15 to 60 min. 
+All of it is in the Settings popup (the gear button). Tick "Log to FTP", fill in host, port, user, password and folder, choose the sample interval (10/30/60 s or 5 min) and the upload interval (15 min to 6 h, default 1 h).
 
 Samples go into esp memory 1st , then get saved to a daily file like `dso152_2026-11-02.csv` on the FTP server. 
 
-## Testing 
-
-What I have yet to test is battery life with the ESP.  But I plan on leaving it with a charger and doing some automotive battery drain capturess. 
-
-Well it's a slow Oscilliscope and the UI can only do 10- 25 FPS. 
 
